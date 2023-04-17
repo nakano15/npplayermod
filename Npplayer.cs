@@ -41,39 +41,29 @@ namespace npplayersmod
         public override void OnEnterWorld(Player player)
         {
             AimPosition = player.Center;
-            if (player.whoAmI == Main.myPlayer)
+            if (player.whoAmI == Main.myPlayer && Main.netMode == 0) //No npplayers on multiplayer.
             {
                 npplayersmod.MyPlayerBackup = player.whoAmI;
                 foreach(Terraria.IO.PlayerFileData p in Main.PlayerList)
                 {
                     if (p.Player != player)
                     {
-                        Player np = SpawnNPPlayer(p.Player);
+                        Player np = SpawnNPPlayer(p.Player, player.whoAmI);
+                        //What else should I do here?
                     }
                 }
-                /*for (byte i = 0; i < 10; i++)
-                {
-                    Player p = SpawnNPPlayer();
-                    if(p != null)
-                    {
-                        //p.inventory[0].SetDefaults(Terraria.ID.ItemID.SolarEruption);
-                        p.inventory[1].SetDefaults(Terraria.ID.ItemID.WoodenBow);
-                        //p.inventory[2].SetDefaults(Terraria.ID.ItemID.StardustCellStaff);
-                        //p.inventory[3].SetDefaults(Terraria.ID.ItemID.RazorbladeTyphoon);
-                        p.inventory[54].SetDefaults(Terraria.ID.ItemID.HolyArrow);
-                        p.inventory[54].stack = 250;
-                        p.selectedItem = 1;
-                        p.armor[0].SetDefaults(Terraria.ID.ItemID.CrimsonHelmet);
-                        p.armor[1].SetDefaults(Terraria.ID.ItemID.CrimsonScalemail);
-                        p.armor[2].SetDefaults(Terraria.ID.ItemID.CrimsonGreaves);
-                    }
-                    p.statManaMax = p.statMana = 200;
-                    p.statLifeMax = p.statLife = 500;
-                }*/
             }
         }
 
-        public static Player SpawnNPPlayer(Player player = null)
+        public static Player SpawnNPPlayer(Player player = null, int Owner = 255)
+        {
+            if (Owner < 0 || Owner > 255) Owner = 255;
+            return SpawnNPPlayer(player, (byte)Owner);
+        }
+
+        ///Spawns a npplayer character, and returns the new character created as value, or returns null if fails.
+        ///Placing a Player character object will instead try spawning it as npplayer.
+        public static Player SpawnNPPlayer(Player player = null, byte Owner = 255)
         {
             for(int i = 254; i >= 0; i--)
             {
@@ -91,7 +81,7 @@ namespace npplayersmod
                     player.Spawn(PlayerSpawnContext.SpawningIntoWorld);
                     Npplayer npp = player.GetModPlayer<Npplayer>();
                     npp.IsNPPlayer = true;
-                    npp.SpawnerID = (byte)npplayersmod.MyPlayerBackup;
+                    npp.SpawnerID = Owner;
                     PlayerLoader.OnEnterWorld(i);
                     return player;
                 }

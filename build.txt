@@ -1,0 +1,3 @@
+displayName = NPPlayers Mod
+author = Nakano15
+version = 0.1

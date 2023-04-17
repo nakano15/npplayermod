@@ -12,10 +12,13 @@ namespace npplayersmod
         public override bool IsCloneable => false;
         private static PlayerDeathReason deathReason = new PlayerDeathReason();
 
+        public const float DivisionBy16 = 1f / 16;
+
         public bool IsNPPlayer = false;
         public byte SpawnerID = 0;
         public bool AIWait = false;
         public byte AITime = 0;
+        private byte LastCompanionFollowIndex = 1;
 
         public Vector2 AimPosition = Vector2.Zero;
 
@@ -26,6 +29,13 @@ namespace npplayersmod
         public static bool IsPlayerLocalNpp(Player player)
         {
             return player.GetModPlayer<Npplayer>().IsLocalNpp;
+        }
+
+        public byte GetFollowIndex { get { return LastCompanionFollowIndex++; } }
+
+        public static byte GetCompanionFollowIndex(Player Leader)
+        {
+            return Leader.GetModPlayer<Npplayer>().GetFollowIndex;
         }
 
         public override void OnEnterWorld(Player player)
@@ -125,6 +135,7 @@ namespace npplayersmod
         public override void PreUpdate()
         {
             Main.myPlayer = npplayersmod.MyPlayerBackup;
+            LastCompanionFollowIndex = 1;
             if (IsLocalNpp)
             {
                 if(Main.dontStarveWorld)
@@ -216,11 +227,64 @@ namespace npplayersmod
             ResetCommands();
             if (TargetID == -1){
                 //UpdateIdle();
-                AvoidNpplayerStacking();
-                ReturnToSpawnPointArea();
+                if (SpawnerID < 255)
+                    FollowLeader();
+                else
+                {
+                    AvoidNpplayerStacking();
+                    ReturnToSpawnPointArea();
+                }
             }
             else
                 UpdateCombat();
+            CheckForTallTilesAhead();
+        }
+
+        private void CheckForTallTilesAhead()
+        {
+            if (Player.jump == 0 && Player.velocity.Y != Terraria.Player.defaultGravity) return;
+            int TileCheckX = (int)((Player.position.X + Player.width * 0.5f + (Player.width * 0.5f + 5) * Player.direction) * DivisionBy16);
+            int TileCheckY = (int)(Player.Bottom.Y * DivisionBy16);
+            bool Opening = false;
+            for(int i = 0; i < 3; i++)
+            {
+                Tile tile = Main.tile[TileCheckX, TileCheckY - i];
+                if (!tile.HasTile || !Main.tileSolid[tile.TileType] || TileID.Sets.Platforms[tile.TileType])
+                {
+                    Opening = true;
+                    break;
+                }
+            }
+            if (!Opening)
+            {
+                Player.controlJump = true;
+            }
+        }
+
+        private void FollowLeader()
+        {
+            Player Leader = Main.player[SpawnerID];
+            float LeaderCenterX = Leader.Center.X;
+            //float LeaderBottom = Leader.Bottom.Y;
+            const float TeleportDistance = 500;
+            float DistanceFromLeader = GetCompanionFollowIndex(Leader) * 20f;
+            float MyCenterX = Player.Center.X;
+            float Distance = Math.Abs(MyCenterX - LeaderCenterX);
+            if (Distance >= TeleportDistance)
+            {
+                Player.Teleport(Leader.position);
+            }
+            else if (Distance >= DistanceFromLeader)
+            {
+                if (LeaderCenterX < MyCenterX)
+                {
+                    Player.controlLeft = true;
+                }
+                else
+                {
+                    Player.controlRight = true;
+                }
+            }
         }
 
         private void AvoidNpplayerStacking()
